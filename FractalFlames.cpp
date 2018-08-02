@@ -1,8 +1,5 @@
 ﻿#include "FractalFlamesPch.h"
 
-#define k_DemoName "Fractal Flames"
-#define k_DemoResolutionX 1280
-#define k_DemoResolutionY 720
 
 struct dx12_context
 {
@@ -17,11 +14,18 @@ struct dx12_context
     ID3D12Fence *FrameFence;
     HANDLE FrameFenceEvent;
     HWND Window;
+    uint32_t Resolution[2];
     uint32_t DescriptorSize;
     uint32_t DescriptorSizeRtv;
     uint32_t FrameIndex;
     uint32_t BackBufferIndex;
     uint64_t FrameCount;
+};
+
+struct dx12_resources
+{
+    ID3D12PipelineState *PipelineState;
+    ID3D12RootSignature *RootSignature;
 };
 
 static std::vector<uint8_t>
@@ -92,6 +96,11 @@ InitializeDx12(dx12_context *Dx12)
     SAFE_RELEASE(TempSwapChain);
     SAFE_RELEASE(Factory);
 
+    RECT Rect;
+    GetClientRect(Dx12->Window, &Rect);
+    Dx12->Resolution[0] = (uint32_t)Rect.right;
+    Dx12->Resolution[1] = (uint32_t)Rect.bottom;
+
     for (uint32_t Index = 0; Index < 2; ++Index)
         VHR(Dx12->Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&Dx12->CmdAlloc[Index])));
 
@@ -128,87 +137,87 @@ static void
 Shutdown(dx12_context *Dx12)
 {
     SAFE_RELEASE(Dx12->CmdList);
-    SAFE_RELEASE(demo.cmdAlloc[0]);
-    SAFE_RELEASE(demo.cmdAlloc[1]);
-    SAFE_RELEASE(demo.swapBufferHeap);
-    for (int i = 0; i < 4; ++i)
-        SAFE_RELEASE(demo.swapBuffers[i]);
-    CloseHandle(demo.frameFenceEvent);
-    SAFE_RELEASE(demo.frameFence);
-    SAFE_RELEASE(demo.swapChain);
-    SAFE_RELEASE(demo.cmdQueue);
-    SAFE_RELEASE(demo.device);
+    SAFE_RELEASE(Dx12->CmdAlloc[0]);
+    SAFE_RELEASE(Dx12->CmdAlloc[1]);
+    SAFE_RELEASE(Dx12->SwapBufferHeap);
+    for (int Index = 0; Index < 4; ++Index)
+        SAFE_RELEASE(Dx12->SwapBuffers[Index]);
+    CloseHandle(Dx12->FrameFenceEvent);
+    SAFE_RELEASE(Dx12->FrameFence);
+    SAFE_RELEASE(Dx12->SwapChain);
+    SAFE_RELEASE(Dx12->CmdQueue);
+    SAFE_RELEASE(Dx12->Device);
 }
 
 static void
-Present(Demo& demo)
+Present(dx12_context *Dx12)
 {
-    demo.swapChain->Present(0, 0);
-    demo.cmdQueue->Signal(demo.frameFence, ++demo.frameCount);
+    Dx12->SwapChain->Present(0, 0);
+    Dx12->CmdQueue->Signal(Dx12->FrameFence, ++Dx12->FrameCount);
 
-    const uint64_t deviceFrameCount = demo.frameFence->GetCompletedValue();
+    const uint64_t GpuFrameCount = Dx12->FrameFence->GetCompletedValue();
 
-    if ((demo.frameCount - deviceFrameCount) >= 2)
+    if ((Dx12->FrameCount - GpuFrameCount) >= 2)
     {
-        demo.frameFence->SetEventOnCompletion(deviceFrameCount + 1, demo.frameFenceEvent);
-        WaitForSingleObject(demo.frameFenceEvent, INFINITE);
+        Dx12->FrameFence->SetEventOnCompletion(GpuFrameCount + 1, Dx12->FrameFenceEvent);
+        WaitForSingleObject(Dx12->FrameFenceEvent, INFINITE);
     }
 
-    demo.frameIndex = !demo.frameIndex;
-    demo.backBufferIndex = demo.swapChain->GetCurrentBackBufferIndex();
+    Dx12->FrameIndex = !Dx12->FrameIndex;
+    Dx12->BackBufferIndex = Dx12->SwapChain->GetCurrentBackBufferIndex();
 }
 
 static void
-Flush(Demo& demo)
+Flush(dx12_context *Dx12)
 {
-    demo.cmdQueue->Signal(demo.frameFence, ++demo.frameCount);
-    demo.frameFence->SetEventOnCompletion(demo.frameCount, demo.frameFenceEvent);
-    WaitForSingleObject(demo.frameFenceEvent, INFINITE);
+    Dx12->CmdQueue->Signal(Dx12->FrameFence, ++Dx12->FrameCount);
+    Dx12->FrameFence->SetEventOnCompletion(Dx12->FrameCount, Dx12->FrameFenceEvent);
+    WaitForSingleObject(Dx12->FrameFenceEvent, INFINITE);
 }
 
 static double
 GetTime()
 {
-    static LARGE_INTEGER startCounter;
-    static LARGE_INTEGER frequency;
-    if (startCounter.QuadPart == 0)
+    static LARGE_INTEGER StartCounter;
+    static LARGE_INTEGER Frequency;
+    if (StartCounter.QuadPart == 0)
     {
-        QueryPerformanceFrequency(&frequency);
-        QueryPerformanceCounter(&startCounter);
+        QueryPerformanceFrequency(&Frequency);
+        QueryPerformanceCounter(&StartCounter);
     }
-    LARGE_INTEGER counter;
-    QueryPerformanceCounter(&counter);
-    return (counter.QuadPart - startCounter.QuadPart) / (double)frequency.QuadPart;
+    LARGE_INTEGER Counter;
+    QueryPerformanceCounter(&Counter);
+    return (Counter.QuadPart - StartCounter.QuadPart) / (double)Frequency.QuadPart;
 }
 
 static void
-UpdateFrameTime(HWND window, double& o_Time, double& o_DeltaTime)
+UpdateFrameStats(HWND Window, const char *Name, double *Time, float *DeltaTime)
 {
-    static double lastTime = -1.0;
-    static double lastFpsTime = 0.0;
-    static unsigned frameCount = 0;
+    static double PreviousTime = -1.0;
+    static double HeaderRefreshTime = 0.0;
+    static uint32_t FrameCount = 0;
 
-    if (lastTime < 0.0)
+    if (PreviousTime < 0.0)
     {
-        lastTime = GetTime();
-        lastFpsTime = lastTime;
+        PreviousTime = GetTime();
+        HeaderRefreshTime = PreviousTime;
     }
 
-    o_Time = GetTime();
-    o_DeltaTime = o_Time - lastTime;
-    lastTime = o_Time;
+    *Time = GetTime();
+    *DeltaTime = *Time - PreviousTime;
+    PreviousTime = *Time;
 
-    if ((o_Time - lastFpsTime) >= 1.0)
+    if ((*Time - HeaderRefreshTime) >= 1.0)
     {
-        const double fps = frameCount / (o_Time - lastFpsTime);
-        const double ms = (1.0 / fps) * 1000.0;
-        char text[256];
-        snprintf(text, sizeof(text), "[%.1f fps  %.3f ms] %s", fps, ms, k_DemoName);
-        SetWindowText(window, text);
-        lastFpsTime = o_Time;
-        frameCount = 0;
+        const double FramesPerSecond = FrameCount / (*Time - HeaderRefreshTime);
+        const double MilliSeconds = (1.0 / FramesPerSecond) * 1000.0;
+        char Header[256];
+        snprintf(Header, sizeof(Header), "[%.1f fps  %.3f ms] %s", FramesPerSecond, MilliSeconds, Name);
+        SetWindowText(Window, Header);
+        HeaderRefreshTime = *Time;
+        FrameCount = 0;
     }
-    frameCount++;
+    FrameCount++;
 }
 
 static LRESULT CALLBACK
@@ -230,53 +239,55 @@ ProcessWindowMessage(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
     return DefWindowProc(window, message, wparam, lparam);
 }
 
-static void
-InitializeWindow(Demo& demo)
+static HWND
+InitializeWindow(const char *Name, uint32_t Width, uint32_t Height)
 {
-    WNDCLASS winclass = {};
-    winclass.lpfnWndProc = ProcessWindowMessage;
-    winclass.hInstance = GetModuleHandle(nullptr);
-    winclass.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    winclass.lpszClassName = k_DemoName;
-    if (!RegisterClass(&winclass))
+    WNDCLASS WinClass = {};
+    WinClass.lpfnWndProc = ProcessWindowMessage;
+    WinClass.hInstance = GetModuleHandle(nullptr);
+    WinClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    WinClass.lpszClassName = Name;
+    if (!RegisterClass(&WinClass))
         assert(0);
 
-    RECT rect = { 0, 0, k_DemoResolutionX, k_DemoResolutionY };
-    if (!AdjustWindowRect(&rect, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX, 0))
+    RECT Rect = { 0, 0, (LONG)Width, (LONG)Height };
+    if (!AdjustWindowRect(&Rect, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX, 0))
         assert(0);
 
-    demo.window = CreateWindowEx(
-        0, k_DemoName, k_DemoName, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX | WS_VISIBLE,
+    HWND Window = CreateWindowEx(
+        0, Name, Name, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        rect.right - rect.left, rect.bottom - rect.top,
+        Rect.right - Rect.left, Rect.bottom - Rect.top,
         nullptr, nullptr, nullptr, 0);
-    assert(demo.window);
+    assert(Window);
+    return Window;
 }
 
 static void
-Draw(Demo& demo)
+Draw(dx12_context *Dx12)
 {
-    ID3D12CommandAllocator* cmdAlloc = demo.cmdAlloc[demo.frameIndex];
-    ID3D12GraphicsCommandList* cl = demo.cmdList;
+    ID3D12CommandAllocator *CmdAlloc = Dx12->CmdAlloc[Dx12->FrameIndex];
+    ID3D12GraphicsCommandList *CmdList = Dx12->CmdList;
 
-    cmdAlloc->Reset();
-    cl->Reset(cmdAlloc, nullptr);
+    CmdAlloc->Reset();
+    CmdList->Reset(CmdAlloc, nullptr);
 
-    cl->RSSetViewports(1, &CD3DX12_VIEWPORT(0.0f, 0.0f, (float)k_DemoResolutionX, (float)k_DemoResolutionY));
-    cl->RSSetScissorRects(1, &CD3DX12_RECT(0, 0, k_DemoResolutionX, k_DemoResolutionY));
+    CmdList->RSSetViewports(1, &CD3DX12_VIEWPORT(0.0f, 0.0f, (float)Dx12->Resolution[0], (float)Dx12->Resolution[1]));
+    CmdList->RSSetScissorRects(1, &CD3DX12_RECT(0, 0, Dx12->Resolution[0], Dx12->Resolution[1]));
 
-    cl->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(demo.swapBuffers[demo.backBufferIndex],
-                                                                 D3D12_RESOURCE_STATE_PRESENT,
-                                                                 D3D12_RESOURCE_STATE_RENDER_TARGET));
+    CmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Dx12->SwapBuffers[Dx12->BackBufferIndex],
+                                                                      D3D12_RESOURCE_STATE_PRESENT,
+                                                                      D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-    D3D12_CPU_DESCRIPTOR_HANDLE backBufferDescriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE(demo.swapBufferHeapStart,
-                                                                                     demo.backBufferIndex,
-                                                                                     demo.descriptorSizeRtv);
-    const float clearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    D3D12_CPU_DESCRIPTOR_HANDLE BackBufferDescriptor = Dx12->SwapBufferHeapStart;
+    BackBufferDescriptor.ptr += Dx12->BackBufferIndex * Dx12->DescriptorSizeRtv;
 
-    cl->OMSetRenderTargets(1, &backBufferDescriptor, 0, nullptr);
-    cl->ClearRenderTargetView(backBufferDescriptor, clearColor, 0, nullptr);
+    const float ClearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
 
+    CmdList->OMSetRenderTargets(1, &BackBufferDescriptor, 0, nullptr);
+    CmdList->ClearRenderTargetView(BackBufferDescriptor, ClearColor, 0, nullptr);
+
+    /*
     cl->SetPipelineState(demo.pso);
     cl->SetGraphicsRootSignature(demo.rootSig);
     cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
@@ -287,36 +298,39 @@ Draw(Demo& demo)
         cl->SetGraphicsRoot32BitConstants(0, 2, p, 0);
         cl->DrawInstanced(1, 1, 0, 0);
     }
-    cl->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(demo.swapBuffers[demo.backBufferIndex],
-                                                                 D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                                 D3D12_RESOURCE_STATE_PRESENT));
-    VHR(cl->Close());
+    */
+    CmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Dx12->SwapBuffers[Dx12->BackBufferIndex],
+                                                                      D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                                      D3D12_RESOURCE_STATE_PRESENT));
+    VHR(CmdList->Close());
 
-    demo.cmdQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&cl);
+    Dx12->CmdQueue->ExecuteCommandLists(1, (ID3D12CommandList **)&CmdList);
 }
 
 static void
-Initialize(Demo& demo)
+Initialize(const dx12_context *Dx12, dx12_resources *Data)
 {
+#if 0
     /* pso */ {
-        std::vector<uint8_t> vsCode = LoadFile("VsTransform.cso");
-        std::vector<uint8_t> psCode = LoadFile("PsShade.cso");
+        std::vector<uint8_t> VsCode = LoadFile("VsTransform.cso");
+        std::vector<uint8_t> PsCode = LoadFile("PsShade.cso");
 
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.VS = { vsCode.data(), vsCode.size() };
-        psoDesc.PS = { psCode.data(), psCode.size() };
-        psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-        psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-        psoDesc.SampleMask = 0xffffffff;
-        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-        psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.SampleDesc.Count = 1;
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC PsoDesc = {};
+        PsoDesc.VS = { VsCode.data(), VsCode.size() };
+        PsoDesc.PS = { PsCode.data(), PsCode.size() };
+        PsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+        PsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        PsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        PsoDesc.SampleMask = 0xffffffff;
+        PsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+        PsoDesc.NumRenderTargets = 1;
+        PsoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        PsoDesc.SampleDesc.Count = 1;
 
-        VHR(demo.device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&demo.pso)));
-        VHR(demo.device->CreateRootSignature(0, vsCode.data(), vsCode.size(), IID_PPV_ARGS(&demo.rootSig)));
+        VHR(Dx12->Device->CreateGraphicsPipelineState(&PsoDesc, IID_PPV_ARGS(&Data->PipelineState)));
+        VHR(Dx12->Device->CreateRootSignature(0, VsCode.data(), VsCode.size(), IID_PPV_ARGS(&Data->RootSignature)));
     }
+#endif
 }
 
 int CALLBACK
@@ -324,26 +338,30 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
     SetProcessDPIAware();
 
-    Demo demo = {};
-    InitializeWindow(demo);
-    InitializeDx12(demo);
-    Initialize(demo);
+    dx12_context Dx12 = {};
+    dx12_resources Resources = {};
+
+    const char *Name = "Fractal Flames";
+    Dx12.Window = InitializeWindow(Name, 1280, 720);
+    InitializeDx12(&Dx12);
+    Initialize(&Dx12, &Resources);
 
     for (;;)
     {
-        MSG msg = {};
-        if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+        MSG Message = {};
+        if (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
+            DispatchMessage(&Message);
+            if (Message.message == WM_QUIT)
                 break;
         }
         else
         {
-            double time, deltaTime;
-            UpdateFrameTime(demo.window, time, deltaTime);
-            Draw(demo);
-            Present(demo);
+            double Time;
+            float DeltaTime;
+            UpdateFrameStats(Dx12.Window, Name, &Time, &DeltaTime);
+            Draw(&Dx12);
+            Present(&Dx12);
         }
     }
 
