@@ -1,7 +1,7 @@
 @echo off
 
 set FXC=fxc.exe /Ges /O3 /WX /nologo /Qstrip_reflect /Qstrip_debug /Qstrip_priv
-set CFLAGS=/Zi /O2 /EHsc
+set CFLAGS=/Zi /Od /EHsc
 
 if exist *.cso del *.cso
 ::%FXC% /D VS_TRANSFORM /E VsTransform /Fo VsTransform.cso /T vs_5_1 100kDrawCalls.hlsl & if errorlevel 1 goto :end

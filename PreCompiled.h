@@ -13,6 +13,8 @@
 #include <windows.h>
 #include <DirectXMath.h>
 #include "d3dx12.h"
+#include "External/stb_image.h"
+#include "External/imgui.h"
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 

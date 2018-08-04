@@ -346,6 +346,11 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     InitializeDx12(&Dx12);
     Initialize(&Dx12, &Resources);
 
+    int x, y, n;
+    stbi_load("adsa", &x, &y, &n, 4);
+
+    ImGui::CreateContext();
+
     for (;;)
     {
         MSG Message = {};
