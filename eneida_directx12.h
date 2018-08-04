@@ -1,4 +1,19 @@
-struct dx12_context
+struct shader_descriptor_heap
+{
+    ID3D12DescriptorHeap *Heap;
+    D3D12_CPU_DESCRIPTOR_HANDLE CpuStart;
+    D3D12_GPU_DESCRIPTOR_HANDLE GpuStart;
+    uint32_t AllocatedCount;
+};
+
+struct nonshader_descriptor_heap
+{
+    ID3D12DescriptorHeap *Heap;
+    D3D12_CPU_DESCRIPTOR_HANDLE CpuStart;
+    uint32_t AllocatedCount;
+};
+
+struct directx12
 {
     ID3D12Device *Device;
     ID3D12CommandQueue *CmdQueue;
@@ -17,4 +32,10 @@ struct dx12_context
     uint32_t FrameIndex;
     uint32_t BackBufferIndex;
     uint64_t FrameCount;
+
+    // shader visible descriptor heaps
+    shader_descriptor_heap ShaderHeaps[2];
+
+    // shader non-visible descriptor heap
+    nonshader_descriptor_heap NonShaderHeap;
 };
