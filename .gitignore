@@ -1,3 +1,4 @@
 *.pdb
 *.obj
 *.pch
+*.exe
