@@ -4,19 +4,18 @@
 #include <assert.h>
 #include <stdint.h>
 #include <math.h>
-#include <vector>
-#include <unordered_map>
-#include <algorithm>
 #include <dxgi1_4.h>
 #include <d3d12.h>
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <DirectXMath.h>
-#include "External/d3dx12.h"
-#include "External/stb_image.h"
-#include "External/imgui.h"
-#include "External/tiny_obj_loader.h"
+#include "external/DirectXMath.h"
+#include "external/EASTL/vector.h"
+#include "external/EASTL/unordered_map.h"
+#include "external/EASTL/algorithm.h"
+#include "external/d3dx12.h"
+#include "external/stb_image.h"
+#include "external/imgui.h"
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 

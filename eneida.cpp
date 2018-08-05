@@ -3,7 +3,19 @@
 #include "eneida_directx12.cpp"
 
 
-static std::vector<uint8_t>
+void *operator new[](size_t size, const char* /*name*/, int /*flags*/,
+                     unsigned /*debugFlags*/, const char* /*file*/, int /*line*/)
+{
+    return malloc(size);
+}
+
+void *operator new[](size_t size, size_t alignment, size_t alignmentOffset, const char* /*name*/,
+                     int /*flags*/, unsigned /*debugFlags*/, const char* /*file*/, int /*line*/)
+{
+    return _aligned_offset_malloc(size, alignment, alignmentOffset);
+}
+
+static eastl::vector<uint8_t>
 LoadFile(const char *FileName)
 {
     FILE *File = fopen(FileName, "rb");
@@ -11,7 +23,7 @@ LoadFile(const char *FileName)
     fseek(File, 0, SEEK_END);
     long Size = ftell(File);
     assert(Size != -1);
-    std::vector<uint8_t> Content(Size);
+    eastl::vector<uint8_t> Content(Size);
     fseek(File, 0, SEEK_SET);
     fread(&Content[0], 1, Content.size(), File);
     fclose(File);
@@ -194,6 +206,8 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
     ImGui::CreateContext();
     */
+    eastl::vector<float> Vec;
+    Vec.push_back(1.0f);
 
     for (;;)
     {
