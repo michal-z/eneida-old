@@ -1,7 +1,7 @@
 @echo off
 
 set FXC=fxc.exe /Ges /O3 /WX /nologo /Qstrip_reflect /Qstrip_debug /Qstrip_priv
-set CFLAGS=/Zi /Od /EHsc /Gy /Gw /W3 /nologo /Iexternal
+set CFLAGS=/Zi /Od /EHa- /GR- /Gy /Gw /W3 /nologo /Iexternal
 set LFLAGS=/incremental:no /opt:ref
 
 if exist *.cso del *.cso
