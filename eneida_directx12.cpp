@@ -1,5 +1,5 @@
-#define k_MaxNonShaderDescriptorCount 1000
-#define k_MaxShaderDescriptorCount 1000
+#define k_MaxNonShaderVisibleDescriptorCount 1000
+#define k_MaxShaderVisibleDescriptorCount 1000
 
 static void
 InitializeDirectX12(directx12 &Dx)
@@ -29,7 +29,7 @@ InitializeDirectX12(directx12 &Dx)
 #endif
     if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_1, IID_PPV_ARGS(&Dx.Device))))
     {
-        // #TODO: Add MessageBox
+        // @Incomplete: Add MessageBox.
         return;
     }
 
@@ -84,6 +84,9 @@ InitializeDirectX12(directx12 &Dx)
         }
     }
 
+    // @Incomplete: Create depth buffer.
+    // @Incomplete: Create shader descriptor heaps.
+
     VHR(Dx.Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, Dx.CmdAlloc[0], nullptr, IID_PPV_ARGS(&Dx.CmdList)));
     VHR(Dx.CmdList->Close());
 
@@ -126,7 +129,7 @@ PresentFrame(directx12 &Dx)
 }
 
 static void
-FlushGpu(directx12 &Dx)
+FlushGpuCommands(directx12 &Dx)
 {
     Dx.CmdQueue->Signal(Dx.FrameFence, ++Dx.FrameCount);
     Dx.FrameFence->SetEventOnCompletion(Dx.FrameCount, Dx.FrameFenceEvent);
@@ -134,11 +137,26 @@ FlushGpu(directx12 &Dx)
 }
 
 static void
-AllocateNonShaderDescriptors(directx12 &Dx, uint32_t Count, D3D12_CPU_DESCRIPTOR_HANDLE &OutFirst)
+AllocateShaderDescriptors(directx12 &Dx, uint32_t Count, D3D12_CPU_DESCRIPTOR_HANDLE &OutFirst)
 {
-    assert((Dx.NonShaderHeap.AllocatedCount + Count) < k_MaxNonShaderDescriptorCount);
+    assert((Dx.NonShaderVisibleHeap.AllocatedCount + Count) < k_MaxNonShaderVisibleDescriptorCount);
 
-    OutFirst.ptr = Dx.NonShaderHeap.CpuStart.ptr + Dx.NonShaderHeap.AllocatedCount * Dx.DescriptorSize;
+    OutFirst.ptr = Dx.NonShaderVisibleHeap.CpuStart.ptr + Dx.NonShaderVisibleHeap.AllocatedCount * Dx.DescriptorSize;
 
-    Dx.NonShaderHeap.AllocatedCount += Count;
+    Dx.NonShaderVisibleHeap.AllocatedCount += Count;
+}
+
+static void
+AllocateShaderDescriptors(directx12 &Dx, uint32_t Count,
+                          D3D12_CPU_DESCRIPTOR_HANDLE &OutFirstCpu,
+                          D3D12_GPU_DESCRIPTOR_HANDLE &OutFirstGpu)
+{
+    shader_descriptor_heap &DescriptorHeap = Dx.ShaderVisibleHeaps[Dx.FrameIndex];
+
+    assert((DescriptorHeap.AllocatedCount + Count) < k_MaxShaderVisibleDescriptorCount);
+
+    OutFirstCpu.ptr = DescriptorHeap.CpuStart.ptr + DescriptorHeap.AllocatedCount * Dx.DescriptorSize;
+    OutFirstGpu.ptr = DescriptorHeap.GpuStart.ptr + DescriptorHeap.AllocatedCount * Dx.DescriptorSize;
+
+    DescriptorHeap.AllocatedCount += Count;
 }
