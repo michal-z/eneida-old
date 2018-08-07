@@ -134,7 +134,7 @@ Draw(directx12 &Dx)
                                                                       D3D12_RESOURCE_STATE_PRESENT,
                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-    D3D12_CPU_DESCRIPTOR_HANDLE BackBufferDescriptor = Dx.SwapBufferHeapStart;
+    D3D12_CPU_DESCRIPTOR_HANDLE BackBufferDescriptor = Dx.RenderTargetHeap.CpuStart;
     BackBufferDescriptor.ptr += Dx.BackBufferIndex * Dx.DescriptorSizeRtv;
 
     const float ClearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };

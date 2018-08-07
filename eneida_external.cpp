@@ -12,3 +12,5 @@
 #include "external/EASTL/source/red_black_tree.cpp"
 #include "external/EASTL/source/string.cpp"
 #include "external/EASTL/source/thread_support.cpp"
+
+// vim: set ts=4 sw=4 expandtab:

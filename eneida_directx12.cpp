@@ -1,10 +1,7 @@
-#define k_MaxNonShaderVisibleDescriptorCount 1000
-#define k_MaxShaderVisibleDescriptorCount 1000
-
 static void
-InitializeDirectX12(directx12 &Dx)
+InitializeDirectX12(directx12& Dx)
 {
-    IDXGIFactory4 *Factory;
+    IDXGIFactory4* Factory;
 #ifdef _DEBUG
     VHR(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&Factory)));
 #else
@@ -13,12 +10,12 @@ InitializeDirectX12(directx12 &Dx)
 
 #ifdef _DEBUG
     {
-        ID3D12Debug *Dbg;
+        ID3D12Debug* Dbg;
         D3D12GetDebugInterface(IID_PPV_ARGS(&Dbg));
         if (Dbg)
         {
             Dbg->EnableDebugLayer();
-            ID3D12Debug1 *Dbg1;
+            ID3D12Debug1* Dbg1;
             Dbg->QueryInterface(IID_PPV_ARGS(&Dbg1));
             if (Dbg1)
                 Dbg1->SetEnableGPUBasedValidation(TRUE);
@@ -65,15 +62,20 @@ InitializeDirectX12(directx12 &Dx)
     Dx.DescriptorSize = Dx.Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     Dx.DescriptorSizeRtv = Dx.Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-    /* swap buffers */ {
+    /* Render Target Descriptor Heap */ {
+        Dx.RenderTargetHeap.Size = 0;
+        Dx.RenderTargetHeap.Capacity = 16;
+        Dx.RenderTargetHeap.CpuStart.ptr = 0;
+        Dx.RenderTargetHeap.GpuStart.ptr = 0;
+
         D3D12_DESCRIPTOR_HEAP_DESC HeapDesc = {};
-        HeapDesc.NumDescriptors = 4;
+        HeapDesc.NumDescriptors = Dx.RenderTargetHeap.Capacity;
         HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
         HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.SwapBufferHeap)));
-        Dx.SwapBufferHeapStart = Dx.SwapBufferHeap->GetCPUDescriptorHandleForHeapStart();
+        VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.RenderTargetHeap.Heap)));
+        Dx.RenderTargetHeap.CpuStart = Dx.RenderTargetHeap.Heap->GetCPUDescriptorHandleForHeapStart();
 
-        D3D12_CPU_DESCRIPTOR_HANDLE Handle = Dx.SwapBufferHeapStart;
+        D3D12_CPU_DESCRIPTOR_HANDLE Handle = Dx.RenderTargetHeap.CpuStart;
 
         for (uint32_t Index = 0; Index < 4; ++Index)
         {
@@ -83,9 +85,65 @@ InitializeDirectX12(directx12 &Dx)
             Handle.ptr += Dx.DescriptorSizeRtv;
         }
     }
+	/* Depth Stencil Descriptor Heap */ {
+        Dx.DepthStencilHeap.Size = 0;
+        Dx.DepthStencilHeap.Capacity = 8;
+        Dx.DepthStencilHeap.CpuStart.ptr = 0;
+        Dx.DepthStencilHeap.GpuStart.ptr = 0;
 
-    // @Incomplete: Create depth buffer.
-    // @Incomplete: Create shader descriptor heaps.
+        D3D12_DESCRIPTOR_HEAP_DESC HeapDesc = {};
+        HeapDesc.NumDescriptors = Dx.DepthStencilHeap.Capacity;
+        HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.DepthStencilHeap.Heap)));
+        Dx.DepthStencilHeap.CpuStart = Dx.DepthStencilHeap.Heap->GetCPUDescriptorHandleForHeapStart();
+
+        CD3DX12_RESOURCE_DESC ImageDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT,
+                                                                       Dx.Resolution[0],
+                                                                       Dx.Resolution[1]);
+        ImageDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+        VHR(Dx.Device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE,
+                                               &ImageDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
+                                               &CD3DX12_CLEAR_VALUE(DXGI_FORMAT_D32_FLOAT, 1.0f, 0),
+                                               IID_PPV_ARGS(&Dx.DepthBuffer)));
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC ViewDesc = {};
+        ViewDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        ViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        ViewDesc.Flags = D3D12_DSV_FLAG_NONE;
+        Dx.Device->CreateDepthStencilView(Dx.DepthBuffer, &ViewDesc, Dx.DepthStencilHeap.CpuStart);
+    }
+    /* Shader Visible Descriptor Heaps */ {
+        for (uint32_t Index = 0; Index < 2; ++Index)
+        {
+            Dx.ShaderVisibleHeaps[Index].Size = 0;
+            Dx.ShaderVisibleHeaps[Index].Capacity = 10000;
+            Dx.ShaderVisibleHeaps[Index].CpuStart.ptr = 0;
+            Dx.ShaderVisibleHeaps[Index].GpuStart.ptr = 0;
+
+            D3D12_DESCRIPTOR_HEAP_DESC HeapDesc = {};
+            HeapDesc.NumDescriptors = Dx.ShaderVisibleHeaps[Index].Capacity;
+            HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.ShaderVisibleHeaps[Index].Heap)));
+
+            Dx.ShaderVisibleHeaps[Index].CpuStart = Dx.ShaderVisibleHeaps[Index].Heap->GetCPUDescriptorHandleForHeapStart();
+            Dx.ShaderVisibleHeaps[Index].GpuStart = Dx.ShaderVisibleHeaps[Index].Heap->GetGPUDescriptorHandleForHeapStart();
+        }
+    }
+    /* Non-Shader Visible Descriptor Heap */ {
+        Dx.NonShaderVisibleHeap.Size = 0;
+        Dx.NonShaderVisibleHeap.Capacity = 10000;
+        Dx.NonShaderVisibleHeap.CpuStart.ptr = 0;
+        Dx.NonShaderVisibleHeap.GpuStart.ptr = 0;
+
+        D3D12_DESCRIPTOR_HEAP_DESC HeapDesc = {};
+        HeapDesc.NumDescriptors = Dx.NonShaderVisibleHeap.Capacity;
+        HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.NonShaderVisibleHeap.Heap)));
+        Dx.NonShaderVisibleHeap.CpuStart = Dx.NonShaderVisibleHeap.Heap->GetCPUDescriptorHandleForHeapStart();
+    }
 
     VHR(Dx.Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, Dx.CmdAlloc[0], nullptr, IID_PPV_ARGS(&Dx.CmdList)));
     VHR(Dx.CmdList->Close());
@@ -97,10 +155,12 @@ InitializeDirectX12(directx12 &Dx)
 static void
 ShutdownDirectX12(directx12 &Dx)
 {
+    // @Incomplete: Release all resources.
     SAFE_RELEASE(Dx.CmdList);
     SAFE_RELEASE(Dx.CmdAlloc[0]);
     SAFE_RELEASE(Dx.CmdAlloc[1]);
-    SAFE_RELEASE(Dx.SwapBufferHeap);
+    SAFE_RELEASE(Dx.RenderTargetHeap.Heap);
+    SAFE_RELEASE(Dx.DepthStencilHeap.Heap);
     for (int Index = 0; Index < 4; ++Index)
         SAFE_RELEASE(Dx.SwapBuffers[Index]);
     CloseHandle(Dx.FrameFenceEvent);
@@ -129,34 +189,65 @@ PresentFrame(directx12 &Dx)
 }
 
 static void
-FlushGpuCommands(directx12 &Dx)
+WaitForGpu(directx12& Dx)
 {
     Dx.CmdQueue->Signal(Dx.FrameFence, ++Dx.FrameCount);
     Dx.FrameFence->SetEventOnCompletion(Dx.FrameCount, Dx.FrameFenceEvent);
     WaitForSingleObject(Dx.FrameFenceEvent, INFINITE);
 }
 
-static void
-AllocateShaderDescriptors(directx12 &Dx, uint32_t Count, D3D12_CPU_DESCRIPTOR_HANDLE &OutFirst)
+static descriptor_heap&
+GetDescriptorHeap(directx12& Dx, D3D12_DESCRIPTOR_HEAP_TYPE Type, D3D12_DESCRIPTOR_HEAP_FLAGS Flags,
+                  uint32_t& OutDescriptorSize)
 {
-    assert((Dx.NonShaderVisibleHeap.AllocatedCount + Count) < k_MaxNonShaderVisibleDescriptorCount);
-
-    OutFirst.ptr = Dx.NonShaderVisibleHeap.CpuStart.ptr + Dx.NonShaderVisibleHeap.AllocatedCount * Dx.DescriptorSize;
-
-    Dx.NonShaderVisibleHeap.AllocatedCount += Count;
+    if (Type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV)
+    {
+        OutDescriptorSize = Dx.DescriptorSizeRtv;
+        return Dx.RenderTargetHeap;
+    }
+    else if (Type == D3D12_DESCRIPTOR_HEAP_TYPE_DSV)
+    {
+        OutDescriptorSize = Dx.DescriptorSizeRtv;
+        return Dx.DepthStencilHeap;
+    }
+    else if (Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+    {
+        OutDescriptorSize = Dx.DescriptorSize;
+        if (Flags == D3D12_DESCRIPTOR_HEAP_FLAG_NONE)
+            return Dx.NonShaderVisibleHeap;
+        else if (Flags == D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+            return Dx.ShaderVisibleHeaps[Dx.FrameIndex];
+    }
+    assert(0);
 }
 
 static void
-AllocateShaderDescriptors(directx12 &Dx, uint32_t Count,
-                          D3D12_CPU_DESCRIPTOR_HANDLE &OutFirstCpu,
-                          D3D12_GPU_DESCRIPTOR_HANDLE &OutFirstGpu)
+AllocateDescriptors(directx12& Dx, D3D12_DESCRIPTOR_HEAP_TYPE Type, uint32_t Count, D3D12_CPU_DESCRIPTOR_HANDLE& OutFirst)
 {
-    shader_descriptor_heap &DescriptorHeap = Dx.ShaderVisibleHeaps[Dx.FrameIndex];
+    uint32_t DescriptorSize;
+    descriptor_heap& DescriptorHeap = GetDescriptorHeap(Dx, Type, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, DescriptorSize);
 
-    assert((DescriptorHeap.AllocatedCount + Count) < k_MaxShaderVisibleDescriptorCount);
+    assert((DescriptorHeap.Size + Count) < DescriptorHeap.Capacity);
 
-    OutFirstCpu.ptr = DescriptorHeap.CpuStart.ptr + DescriptorHeap.AllocatedCount * Dx.DescriptorSize;
-    OutFirstGpu.ptr = DescriptorHeap.GpuStart.ptr + DescriptorHeap.AllocatedCount * Dx.DescriptorSize;
+    OutFirst.ptr = DescriptorHeap.CpuStart.ptr + DescriptorHeap.Size * DescriptorSize;
 
-    DescriptorHeap.AllocatedCount += Count;
+    DescriptorHeap.Size += Count;
 }
+
+static void
+AllocateGpuDescriptors(directx12& Dx, uint32_t Count,
+                       D3D12_CPU_DESCRIPTOR_HANDLE& OutFirstCpu,
+                       D3D12_GPU_DESCRIPTOR_HANDLE& OutFirstGpu)
+{
+    uint32_t DescriptorSize;
+    descriptor_heap& DescriptorHeap = GetDescriptorHeap(Dx, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                                                        D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, DescriptorSize);
+
+    assert((DescriptorHeap.Size + Count) < DescriptorHeap.Capacity);
+
+    OutFirstCpu.ptr = DescriptorHeap.CpuStart.ptr + DescriptorHeap.Size * DescriptorSize;
+    OutFirstGpu.ptr = DescriptorHeap.GpuStart.ptr + DescriptorHeap.Size * DescriptorSize;
+
+    DescriptorHeap.Size += Count;
+}
+// vim: set ts=4 sw=4 expandtab:

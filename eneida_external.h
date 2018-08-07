@@ -27,3 +27,5 @@
 
 #define VHR(hr) if (FAILED(hr)) { assert(0); }
 #define SAFE_RELEASE(obj) if ((obj)) { (obj)->Release(); (obj) = nullptr; }
+
+// vim: set ts=4 sw=4 expandtab:
