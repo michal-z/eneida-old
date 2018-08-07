@@ -85,7 +85,7 @@ InitializeDirectX12(directx12& Dx)
             Handle.ptr += Dx.DescriptorSizeRtv;
         }
     }
-	/* Depth Stencil Descriptor Heap */ {
+    /* Depth Stencil Descriptor Heap */ {
         Dx.DepthStencilHeap.Size = 0;
         Dx.DepthStencilHeap.Capacity = 8;
         Dx.DepthStencilHeap.CpuStart.ptr = 0;
