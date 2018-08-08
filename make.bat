@@ -5,8 +5,8 @@ set CFLAGS=/Zi /Od /EHa- /GR- /Gy /Gw /W3 /nologo /Iexternal
 set LFLAGS=/incremental:no /opt:ref
 
 if exist *.cso del *.cso
-::%FXC% /D VS_TRANSFORM /E VsTransform /Fo VsTransform.cso /T vs_5_1 100kDrawCalls.hlsl & if errorlevel 1 goto :end
-::%FXC% /D PS_SHADE /E PsShade /Fo PsShade.cso /T ps_5_1 100kDrawCalls.hlsl & if errorlevel 1 goto :end
+%FXC% /D VS_IMGUI /E VsImgui /Fo data\shaders\imgui-vs.cso /T vs_5_1 eneida_shaders.hlsl & if errorlevel 1 goto :end
+%FXC% /D PS_IMGUI /E PsImgui /Fo data\shaders\imgui-ps.cso /T ps_5_1 eneida_shaders.hlsl & if errorlevel 1 goto :end
 
 if exist eneida.exe del eneida.exe
 if not exist eneida_external.pch (cl %CFLAGS% /c /Yceneida_external.h eneida_external.cpp)

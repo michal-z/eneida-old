@@ -3,8 +3,17 @@ struct descriptor_heap
     ID3D12DescriptorHeap* Heap;
     D3D12_CPU_DESCRIPTOR_HANDLE CpuStart;
     D3D12_GPU_DESCRIPTOR_HANDLE GpuStart;
-    uint32_t Size;
-    uint32_t Capacity;
+    unsigned Size;
+    unsigned Capacity;
+};
+
+struct gpu_memory_heap
+{
+    ID3D12Resource* Heap;
+    uint8_t* CpuStart;
+    D3D12_GPU_VIRTUAL_ADDRESS GpuStart;
+    unsigned Size;
+    unsigned Capacity;
 };
 
 struct directx12
@@ -19,12 +28,14 @@ struct directx12
     ID3D12Fence* FrameFence;
     HANDLE FrameFenceEvent;
     HWND Window;
-    uint32_t Resolution[2];
-    uint32_t DescriptorSize;
-    uint32_t DescriptorSizeRtv;
-    uint32_t FrameIndex;
-    uint32_t BackBufferIndex;
+    unsigned Resolution[2];
+    unsigned DescriptorSize;
+    unsigned DescriptorSizeRtv;
+    unsigned FrameIndex;
+    unsigned BackBufferIndex;
     uint64_t FrameCount;
+
+    eastl::vector<ID3D12Resource*> IntermediateResources;
 
     descriptor_heap RenderTargetHeap;
     descriptor_heap DepthStencilHeap;
@@ -34,5 +45,7 @@ struct directx12
 
     // non-shader visible descriptor heap
     descriptor_heap NonShaderVisibleHeap;
+
+    gpu_memory_heap UploadMemoryHeaps[2];
 };
 // vim: set ts=4 sw=4 expandtab:

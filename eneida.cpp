@@ -1,6 +1,8 @@
 ﻿#include "eneida_external.h"
 #include "eneida.h"
+#include "eneida_common.cpp"
 #include "eneida_directx12.cpp"
+#include "eneida_imgui.cpp"
 
 
 void *operator new[](size_t size, const char* /*name*/, int /*flags*/,
@@ -15,36 +17,6 @@ void *operator new[](size_t size, size_t alignment, size_t alignmentOffset, cons
     return _aligned_offset_malloc(size, alignment, alignmentOffset);
 }
 
-static eastl::vector<uint8_t>
-LoadFile(const char *FileName)
-{
-    FILE *File = fopen(FileName, "rb");
-    assert(File);
-    fseek(File, 0, SEEK_END);
-    long Size = ftell(File);
-    assert(Size != -1);
-    eastl::vector<uint8_t> Content(Size);
-    fseek(File, 0, SEEK_SET);
-    fread(&Content[0], 1, Content.size(), File);
-    fclose(File);
-    return Content;
-}
-
-static double
-GetTime()
-{
-    static LARGE_INTEGER StartCounter;
-    static LARGE_INTEGER Frequency;
-    if (StartCounter.QuadPart == 0)
-    {
-        QueryPerformanceFrequency(&Frequency);
-        QueryPerformanceCounter(&StartCounter);
-    }
-    LARGE_INTEGER Counter;
-    QueryPerformanceCounter(&Counter);
-    return (Counter.QuadPart - StartCounter.QuadPart) / (double)Frequency.QuadPart;
-}
-
 static void
 UpdateFrameStats(HWND Window, const char *Name, double &OutTime, float &OutDeltaTime)
 {
@@ -54,11 +26,11 @@ UpdateFrameStats(HWND Window, const char *Name, double &OutTime, float &OutDelta
 
     if (PreviousTime < 0.0)
     {
-        PreviousTime = GetTime();
+        PreviousTime = GetAbsoluteTime();
         HeaderRefreshTime = PreviousTime;
     }
 
-    OutTime = GetTime();
+    OutTime = GetAbsoluteTime();
     OutDeltaTime = (float)(OutTime - PreviousTime);
     PreviousTime = OutTime;
 
@@ -159,33 +131,7 @@ Draw(directx12 &Dx)
                                                                       D3D12_RESOURCE_STATE_PRESENT));
     VHR(CmdList->Close());
 
-    Dx.CmdQueue->ExecuteCommandLists(1, (ID3D12CommandList **)&CmdList);
-}
-
-static void
-Initialize(const directx12 &Dx)
-{
-#if 0
-    /* pso */ {
-        std::vector<uint8_t> VsCode = LoadFile("VsTransform.cso");
-        std::vector<uint8_t> PsCode = LoadFile("PsShade.cso");
-
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC PsoDesc = {};
-        PsoDesc.VS = { VsCode.data(), VsCode.size() };
-        PsoDesc.PS = { PsCode.data(), PsCode.size() };
-        PsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-        PsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-        PsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-        PsoDesc.SampleMask = 0xffffffff;
-        PsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-        PsoDesc.NumRenderTargets = 1;
-        PsoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        PsoDesc.SampleDesc.Count = 1;
-
-        VHR(Dx12->Device->CreateGraphicsPipelineState(&PsoDesc, IID_PPV_ARGS(&Data->PipelineState)));
-        VHR(Dx12->Device->CreateRootSignature(0, VsCode.data(), VsCode.size(), IID_PPV_ARGS(&Data->RootSignature)));
-    }
-#endif
+    Dx.CmdQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&CmdList);
 }
 
 int CALLBACK
@@ -194,20 +140,14 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     SetProcessDPIAware();
 
     directx12 Dx = {};
+    imgui_renderer GuiRenderer = {};
 
-    const char *Name = "eneida";
+    const char* Name = "eneida";
     Dx.Window = InitializeWindow(Name, 1280, 720);
     InitializeDirectX12(Dx);
-    Initialize(Dx);
-
-    /*
-    int x, y, n;
-    stbi_load("adsa", &x, &y, &n, 4);
 
     ImGui::CreateContext();
-    */
-    eastl::vector<float> Vec;
-    Vec.push_back(1.0f);
+    InitializeGuiRenderer(GuiRenderer, Dx);
 
     for (;;)
     {
@@ -224,6 +164,7 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             float DeltaTime;
             UpdateFrameStats(Dx.Window, Name, Time, DeltaTime);
             Draw(Dx);
+            RenderGui(GuiRenderer, Dx);
             PresentFrame(Dx);
         }
     }

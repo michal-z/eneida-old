@@ -45,7 +45,7 @@ InitializeDirectX12(directx12& Dx)
     SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
     SwapChainDesc.Windowed = TRUE;
 
-    IDXGISwapChain *TempSwapChain;
+    IDXGISwapChain* TempSwapChain;
     VHR(Factory->CreateSwapChain(Dx.CmdQueue, &SwapChainDesc, &TempSwapChain));
     VHR(TempSwapChain->QueryInterface(IID_PPV_ARGS(&Dx.SwapChain)));
     SAFE_RELEASE(TempSwapChain);
@@ -98,9 +98,7 @@ InitializeDirectX12(directx12& Dx)
         VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.DepthStencilHeap.Heap)));
         Dx.DepthStencilHeap.CpuStart = Dx.DepthStencilHeap.Heap->GetCPUDescriptorHandleForHeapStart();
 
-        CD3DX12_RESOURCE_DESC ImageDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT,
-                                                                       Dx.Resolution[0],
-                                                                       Dx.Resolution[1]);
+        auto ImageDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, Dx.Resolution[0], Dx.Resolution[1]);
         ImageDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
         VHR(Dx.Device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE,
                                                &ImageDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
@@ -144,6 +142,25 @@ InitializeDirectX12(directx12& Dx)
         VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.NonShaderVisibleHeap.Heap)));
         Dx.NonShaderVisibleHeap.CpuStart = Dx.NonShaderVisibleHeap.Heap->GetCPUDescriptorHandleForHeapStart();
     }
+	/* Upload Memory Heaps */ {
+        for (uint32_t Index = 0; Index < 2; ++Index)
+        {
+            gpu_memory_heap& UploadHeap = Dx.UploadMemoryHeaps[Index];
+            UploadHeap.Size = 0;
+            UploadHeap.Capacity = 8*1024*1024;
+            UploadHeap.CpuStart = 0;
+            UploadHeap.GpuStart = 0;
+
+            VHR(Dx.Device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), D3D12_HEAP_FLAG_NONE,
+                                                   &CD3DX12_RESOURCE_DESC::Buffer(UploadHeap.Capacity),
+                                                   D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+                                                   IID_PPV_ARGS(&UploadHeap.Heap)));
+
+            VHR(UploadHeap.Heap->Map(0, &CD3DX12_RANGE(0, 0), (void**)&UploadHeap.CpuStart));
+
+            UploadHeap.GpuStart = UploadHeap.Heap->GetGPUVirtualAddress();
+        }
+    }
 
     VHR(Dx.Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, Dx.CmdAlloc[0], nullptr, IID_PPV_ARGS(&Dx.CmdList)));
     VHR(Dx.CmdList->Close());
@@ -153,7 +170,7 @@ InitializeDirectX12(directx12& Dx)
 }
 
 static void
-ShutdownDirectX12(directx12 &Dx)
+ShutdownDirectX12(directx12& Dx)
 {
     // @Incomplete: Release all resources.
     SAFE_RELEASE(Dx.CmdList);
@@ -171,7 +188,7 @@ ShutdownDirectX12(directx12 &Dx)
 }
 
 static void
-PresentFrame(directx12 &Dx)
+PresentFrame(directx12& Dx)
 {
     Dx.SwapChain->Present(0, 0);
     Dx.CmdQueue->Signal(Dx.FrameFence, ++Dx.FrameCount);
@@ -186,6 +203,9 @@ PresentFrame(directx12 &Dx)
 
     Dx.FrameIndex = !Dx.FrameIndex;
     Dx.BackBufferIndex = Dx.SwapChain->GetCurrentBackBufferIndex();
+
+    Dx.ShaderVisibleHeaps[Dx.FrameIndex].Size = 0;
+    Dx.UploadMemoryHeaps[Dx.FrameIndex].Size = 0;
 }
 
 static void
@@ -219,6 +239,8 @@ GetDescriptorHeap(directx12& Dx, D3D12_DESCRIPTOR_HEAP_TYPE Type, D3D12_DESCRIPT
             return Dx.ShaderVisibleHeaps[Dx.FrameIndex];
     }
     assert(0);
+    OutDescriptorSize = 0;
+    return Dx.NonShaderVisibleHeap;
 }
 
 static void
@@ -249,5 +271,23 @@ AllocateGpuDescriptors(directx12& Dx, uint32_t Count,
     OutFirstGpu.ptr = DescriptorHeap.GpuStart.ptr + DescriptorHeap.Size * DescriptorSize;
 
     DescriptorHeap.Size += Count;
+}
+
+static void*
+AllocateGpuUploadMemory(directx12& Dx, uint32_t Size, D3D12_GPU_VIRTUAL_ADDRESS& OutGpuAddress)
+{
+    assert(Size > 0);
+
+    if (Size & 0xff) // always align to 256 bytes
+        Size = (Size + 255) & ~0xff;
+
+    gpu_memory_heap& UploadHeap = Dx.UploadMemoryHeaps[Dx.FrameIndex];
+    assert((UploadHeap.Size + Size) < UploadHeap.Capacity);
+
+    void* CpuAddr = UploadHeap.CpuStart + UploadHeap.Size;
+    OutGpuAddress = UploadHeap.GpuStart + UploadHeap.Size;
+
+    UploadHeap.Size += Size;
+    return CpuAddr;
 }
 // vim: set ts=4 sw=4 expandtab:
