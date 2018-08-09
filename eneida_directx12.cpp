@@ -142,7 +142,7 @@ InitializeDirectX12(directx12& Dx)
         VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.NonShaderVisibleHeap.Heap)));
         Dx.NonShaderVisibleHeap.CpuStart = Dx.NonShaderVisibleHeap.Heap->GetCPUDescriptorHandleForHeapStart();
     }
-	/* Upload Memory Heaps */ {
+    /* Upload Memory Heaps */ {
         for (uint32_t Index = 0; Index < 2; ++Index)
         {
             gpu_memory_heap& UploadHeap = Dx.UploadMemoryHeaps[Index];

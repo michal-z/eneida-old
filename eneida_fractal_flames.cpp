@@ -3,7 +3,7 @@ namespace FractalFlames
 
 struct demo
 {
-	int x;
+    int x;
 };
 
 static void
@@ -19,7 +19,7 @@ Shutdown(demo& Demo, directx12& Dx)
 static void
 Update(demo& Demo, directx12& Dx, double FrameTime, float FrameDeltaTime)
 {
-	ImGui::ShowDemoWindow();
+    ImGui::ShowDemoWindow();
 }
 
 static void
