@@ -3,7 +3,7 @@ InitializeGuiRenderer(imgui_renderer& Gui, directx12& Dx)
 {
     uint8_t* Pixels;
     int Width, Height;
-    ImGui::GetIO().Fonts->AddFontFromFileTTF("data/Roboto-Medium.ttf", 20.0f);
+    ImGui::GetIO().Fonts->AddFontFromFileTTF("data/Roboto-Medium.ttf", 18.0f);
     ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&Pixels, &Width, &Height);
 
     const auto TextureDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, (UINT64)Width, Height);
@@ -161,21 +161,21 @@ RenderGui(imgui_renderer& Gui, directx12& Dx)
     Dx.CmdList->SetPipelineState(Gui.PipelineState);
     Dx.CmdList->SetGraphicsRootSignature(Gui.RootSignature);
 
-	{
-		ID3D12DescriptorHeap* Heap = Dx.ShaderVisibleHeaps[Dx.FrameIndex].Heap;
-		Dx.CmdList->SetDescriptorHeaps(1, &Heap);
+    {
+        ID3D12DescriptorHeap* Heap = Dx.ShaderVisibleHeaps[Dx.FrameIndex].Heap;
+        Dx.CmdList->SetDescriptorHeaps(1, &Heap);
 
-		CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle;
-		AllocateGpuDescriptors(Dx, 1, cpuHandle, gpuHandle);
-		Dx.Device->CopyDescriptorsSimple(1, cpuHandle, Gui.FontTextureDescriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+        CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle;
+        AllocateGpuDescriptors(Dx, 1, cpuHandle, gpuHandle);
+        Dx.Device->CopyDescriptorsSimple(1, cpuHandle, Gui.FontTextureDescriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-		Dx.CmdList->SetGraphicsRootDescriptorTable(1, gpuHandle);
-	}
+        Dx.CmdList->SetGraphicsRootDescriptorTable(1, gpuHandle);
+    }
 
-	Dx.CmdList->IASetVertexBuffers(0, 1, &Frame.VertexBufferView);
-	Dx.CmdList->IASetIndexBuffer(&Frame.IndexBufferView);
-	Dx.CmdList->SetGraphicsRootConstantBufferView(0, ConstantBufferGpuAddress);
+    Dx.CmdList->IASetVertexBuffers(0, 1, &Frame.VertexBufferView);
+    Dx.CmdList->IASetIndexBuffer(&Frame.IndexBufferView);
+    Dx.CmdList->SetGraphicsRootConstantBufferView(0, ConstantBufferGpuAddress);
 
 
     int VertexOffset = 0;

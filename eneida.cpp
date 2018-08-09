@@ -3,26 +3,27 @@
 #include "eneida_common.cpp"
 #include "eneida_directx12.cpp"
 #include "eneida_imgui.cpp"
+#include "eneida_fractal_flames.cpp"
 
 
-void *operator new[](size_t size, const char* /*name*/, int /*flags*/,
-                     unsigned /*debugFlags*/, const char* /*file*/, int /*line*/)
+void *operator new[](size_t Size, const char* /*Name*/, int /*Flags*/,
+                     unsigned /*DebugFlags*/, const char* /*File*/, int /*Line*/)
 {
-    return malloc(size);
+    return malloc(Size);
 }
 
-void *operator new[](size_t size, size_t alignment, size_t alignmentOffset, const char* /*name*/,
-                     int /*flags*/, unsigned /*debugFlags*/, const char* /*file*/, int /*line*/)
+void *operator new[](size_t Size, size_t Alignment, size_t AlignmentOffset, const char* /*Name*/,
+                     int /*Flags*/, unsigned /*DebugFlags*/, const char* /*File*/, int /*Line*/)
 {
-    return _aligned_offset_malloc(size, alignment, alignmentOffset);
+    return _aligned_offset_malloc(Size, Alignment, AlignmentOffset);
 }
 
 static void
-UpdateFrameStats(HWND Window, const char *Name, double &OutTime, float &OutDeltaTime)
+UpdateFrameStats(HWND Window, const char* Name, double& OutTime, float& OutDeltaTime)
 {
     static double PreviousTime = -1.0;
     static double HeaderRefreshTime = 0.0;
-    static uint32_t FrameCount = 0;
+    static unsigned FrameCount = 0;
 
     if (PreviousTime < 0.0)
     {
@@ -50,16 +51,65 @@ UpdateFrameStats(HWND Window, const char *Name, double &OutTime, float &OutDelta
 static LRESULT CALLBACK
 ProcessWindowMessage(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 {
+    ImGuiIO& Io = ImGui::GetIO();
+
     switch (Message)
     {
+    case WM_LBUTTONDOWN:
+        Io.MouseDown[0] = true;
+        return 0;
+    case WM_LBUTTONUP:
+        Io.MouseDown[0] = false;
+        return 0;
+    case WM_RBUTTONDOWN:
+        Io.MouseDown[1] = true;
+        return 0;
+    case WM_RBUTTONUP:
+        Io.MouseDown[1] = false;
+        return 0;
+    case WM_MBUTTONDOWN:
+        Io.MouseDown[2] = true;
+        return 0;
+    case WM_MBUTTONUP:
+        Io.MouseDown[2] = false;
+        return 0;
+    case WM_MOUSEWHEEL:
+        Io.MouseWheel += GET_WHEEL_DELTA_WPARAM(WParam) > 0 ? 1.0f : -1.0f;
+        return 0;
+    case WM_MOUSEMOVE:
+        Io.MousePos.x = (signed short)(LParam);
+        Io.MousePos.y = (signed short)(LParam >> 16);
+        return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
     case WM_KEYDOWN:
-        if (WParam == VK_ESCAPE)
         {
-            PostQuitMessage(0);
-            return 0;
+            if (WParam < 256)
+            {
+                Io.KeysDown[WParam] = true;
+                if (WParam == VK_ESCAPE)
+                    PostQuitMessage(0);
+                return 0;
+            }
+        }
+        break;
+    case WM_KEYUP:
+        {
+            if (WParam < 256)
+            {
+                Io.KeysDown[WParam] = false;
+                return 0;
+            }
+        }
+        break;
+    case WM_CHAR:
+        {
+            if (WParam > 0 && WParam < 0x10000)
+            {
+                Io.AddInputCharacter((unsigned short)WParam);
+                return 0;
+            }
         }
         break;
     }
@@ -67,7 +117,7 @@ ProcessWindowMessage(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 }
 
 static HWND
-InitializeWindow(const char *Name, uint32_t Width, uint32_t Height)
+InitializeWindow(const char* Name, unsigned Width, unsigned Height)
 {
     WNDCLASS WinClass = {};
     WinClass.lpfnWndProc = ProcessWindowMessage;
@@ -91,10 +141,10 @@ InitializeWindow(const char *Name, uint32_t Width, uint32_t Height)
 }
 
 static void
-Draw(directx12 &Dx)
+BeginFrame(directx12& Dx)
 {
-    ID3D12CommandAllocator *CmdAlloc = Dx.CmdAlloc[Dx.FrameIndex];
-    ID3D12GraphicsCommandList *CmdList = Dx.CmdList;
+    ID3D12CommandAllocator* CmdAlloc = Dx.CmdAlloc[Dx.FrameIndex];
+    ID3D12GraphicsCommandList* CmdList = Dx.CmdList;
 
     CmdAlloc->Reset();
     CmdList->Reset(CmdAlloc, nullptr);
@@ -113,41 +163,71 @@ Draw(directx12 &Dx)
 
     CmdList->OMSetRenderTargets(1, &BackBufferDescriptor, 0, nullptr);
     CmdList->ClearRenderTargetView(BackBufferDescriptor, ClearColor, 0, nullptr);
+}
 
-    /*
-    cl->SetPipelineState(demo.pso);
-    cl->SetGraphicsRootSignature(demo.rootSig);
-    cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+static void
+EndFrame(directx12& Dx)
+{
+    Dx.CmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Dx.SwapBuffers[Dx.BackBufferIndex],
+                                                                         D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                                                         D3D12_RESOURCE_STATE_PRESENT));
+    VHR(Dx.CmdList->Close());
 
-    for (uint32_t i = 0; i < 100000; ++i)
-    {
-        float p[2] = { Randomf(-0.7f, 0.7f), Randomf(-0.7f, 0.7f) };
-        cl->SetGraphicsRoot32BitConstants(0, 2, p, 0);
-        cl->DrawInstanced(1, 1, 0, 0);
-    }
-    */
-    CmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Dx.SwapBuffers[Dx.BackBufferIndex],
-                                                                      D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                                                      D3D12_RESOURCE_STATE_PRESENT));
-    VHR(CmdList->Close());
-
-    Dx.CmdQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&CmdList);
+    Dx.CmdQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&Dx.CmdList);
 }
 
 int CALLBACK
 WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
     SetProcessDPIAware();
+    ImGui::CreateContext();
 
     directx12 Dx = {};
-    imgui_renderer GuiRenderer = {};
-
     const char* Name = "eneida";
     Dx.Window = InitializeWindow(Name, 1280, 720);
     InitializeDirectX12(Dx);
 
-    ImGui::CreateContext();
+    ImGuiIO& Io = ImGui::GetIO();
+    Io.KeyMap[ImGuiKey_Tab] = VK_TAB;
+    Io.KeyMap[ImGuiKey_LeftArrow] = VK_LEFT;
+    Io.KeyMap[ImGuiKey_RightArrow] = VK_RIGHT;
+    Io.KeyMap[ImGuiKey_UpArrow] = VK_UP;
+    Io.KeyMap[ImGuiKey_DownArrow] = VK_DOWN;
+    Io.KeyMap[ImGuiKey_PageUp] = VK_PRIOR;
+    Io.KeyMap[ImGuiKey_PageDown] = VK_NEXT;
+    Io.KeyMap[ImGuiKey_Home] = VK_HOME;
+    Io.KeyMap[ImGuiKey_End] = VK_END;
+    Io.KeyMap[ImGuiKey_Delete] = VK_DELETE;
+    Io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
+    Io.KeyMap[ImGuiKey_Enter] = VK_RETURN;
+    Io.KeyMap[ImGuiKey_Escape] = VK_ESCAPE;
+    Io.KeyMap[ImGuiKey_A] = 'A';
+    Io.KeyMap[ImGuiKey_C] = 'C';
+    Io.KeyMap[ImGuiKey_V] = 'V';
+    Io.KeyMap[ImGuiKey_X] = 'X';
+    Io.KeyMap[ImGuiKey_Y] = 'Y';
+    Io.KeyMap[ImGuiKey_Z] = 'Z';
+    Io.ImeWindowHandle = Dx.Window;
+    Io.RenderDrawListsFn = nullptr;
+    Io.DisplaySize = ImVec2((float)Dx.Resolution[0], (float)Dx.Resolution[1]);
+    ImGui::GetStyle().WindowRounding = 0.0f;
+
+    imgui_renderer GuiRenderer = {};
     InitializeGuiRenderer(GuiRenderer, Dx);
+
+    namespace DemoName = FractalFlames;
+    DemoName::demo Demo;
+    DemoName::Initialize(Demo, Dx);
+
+    // Upload resources to the GPU.
+    VHR(Dx.CmdList->Close());
+    Dx.CmdQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&Dx.CmdList);
+    WaitForGpu(Dx);
+
+    for (ID3D12Resource* Resource : Dx.IntermediateResources)
+        SAFE_RELEASE(Resource);
+
+    Dx.IntermediateResources.clear();
 
     for (;;)
     {
@@ -163,8 +243,20 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             double Time;
             float DeltaTime;
             UpdateFrameStats(Dx.Window, Name, Time, DeltaTime);
-            Draw(Dx);
+
+            ImGuiIO& Io = ImGui::GetIO();
+            Io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+            Io.KeyShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+            Io.KeyAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+            Io.DeltaTime = DeltaTime;
+
+            BeginFrame(Dx);
+            ImGui::NewFrame();
+            DemoName::Update(Demo, Dx, Time, DeltaTime);
+            DemoName::Render(Demo, Dx);
+            ImGui::Render();
             RenderGui(GuiRenderer, Dx);
+            EndFrame(Dx);
             PresentFrame(Dx);
         }
     }

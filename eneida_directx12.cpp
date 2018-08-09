@@ -163,7 +163,6 @@ InitializeDirectX12(directx12& Dx)
     }
 
     VHR(Dx.Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, Dx.CmdAlloc[0], nullptr, IID_PPV_ARGS(&Dx.CmdList)));
-    VHR(Dx.CmdList->Close());
 
     VHR(Dx.Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Dx.FrameFence)));
     Dx.FrameFenceEvent = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);

@@ -3,6 +3,7 @@
 #include "external/stb_image.h"
 #include "external/imgui.cpp"
 #include "external/imgui_draw.cpp"
+#include "external/imgui_demo.cpp"
 #include "external/EASTL/source/allocator_eastl.cpp"
 #include "external/EASTL/source/assert.cpp"
 #include "external/EASTL/source/fixed_pool.cpp"
