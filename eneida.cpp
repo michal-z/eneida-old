@@ -253,7 +253,6 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             BeginFrame(Dx);
             ImGui::NewFrame();
             DemoName::Update(Demo, Dx, Time, DeltaTime);
-            DemoName::Render(Demo, Dx);
             ImGui::Render();
             RenderGui(GuiRenderer, Dx);
             EndFrame(Dx);

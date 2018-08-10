@@ -22,10 +22,5 @@ Update(demo& Demo, directx12& Dx, double FrameTime, float FrameDeltaTime)
     ImGui::ShowDemoWindow();
 }
 
-static void
-Render(demo& Demo, directx12& Dx)
-{
-}
-
 } // namespace FractalFlames
 // vim: set ts=4 sw=4 expandtab:
