@@ -140,18 +140,12 @@ RenderGui(imgui_renderer& Gui, directx12& Dx)
 
     // update constant buffer
     {
-        const float L = 0.0f;
-        const float R = (float)ViewportWidth;
-        const float B = (float)ViewportHeight;
-        const float T = 0.0f;
-        const float mvp[4][4] =
-        {
-            { 2.0f / (R - L),    0.0f,              0.0f,    0.0f },
-            { 0.0f,              2.0f / (T - B),    0.0f,    0.0f },
-            { 0.0f,              0.0f,              0.5f,    0.0f },
-            { (R + L) / (L - R), (T + B) / (B - T), 0.5f,    1.0f },
-        };
-        memcpy(ConstantBufferCpuAddress, mvp, sizeof(mvp));
+        XMMATRIX M = XMMatrixTranspose(XMMatrixOrthographicOffCenterLH(0.0f, (float)ViewportWidth,
+                                                                       (float)ViewportHeight, 0.0f,
+                                                                       0.0f, 1.0f));
+        XMFLOAT4X4A F;
+        XMStoreFloat4x4A(&F, M);
+        memcpy(ConstantBufferCpuAddress, &F, sizeof(F));
     }
 
     D3D12_VIEWPORT Viewport = { 0.0f, 0.0f, (float)ViewportWidth, (float)ViewportHeight, 0.0f, 1.0f };
@@ -159,23 +153,19 @@ RenderGui(imgui_renderer& Gui, directx12& Dx)
 
     Dx.CmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     Dx.CmdList->SetPipelineState(Gui.PipelineState);
+
     Dx.CmdList->SetGraphicsRootSignature(Gui.RootSignature);
-
+    Dx.CmdList->SetGraphicsRootConstantBufferView(0, ConstantBufferGpuAddress);
     {
-        ID3D12DescriptorHeap* Heap = Dx.ShaderVisibleHeaps[Dx.FrameIndex].Heap;
-        Dx.CmdList->SetDescriptorHeaps(1, &Heap);
-
-        CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-        CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle;
-        AllocateGpuDescriptors(Dx, 1, cpuHandle, gpuHandle);
-        Dx.Device->CopyDescriptorsSimple(1, cpuHandle, Gui.FontTextureDescriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-        Dx.CmdList->SetGraphicsRootDescriptorTable(1, gpuHandle);
+        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle;
+        D3D12_GPU_DESCRIPTOR_HANDLE GpuHandle;
+        AllocateGpuDescriptors(Dx, 1, CpuHandle, GpuHandle);
+        Dx.Device->CopyDescriptorsSimple(1, CpuHandle, Gui.FontTextureDescriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        Dx.CmdList->SetGraphicsRootDescriptorTable(1, GpuHandle);
     }
 
     Dx.CmdList->IASetVertexBuffers(0, 1, &Frame.VertexBufferView);
     Dx.CmdList->IASetIndexBuffer(&Frame.IndexBufferView);
-    Dx.CmdList->SetGraphicsRootConstantBufferView(0, ConstantBufferGpuAddress);
 
 
     int VertexOffset = 0;

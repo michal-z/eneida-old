@@ -34,7 +34,7 @@ ConstantBuffer<constant_data> s_Cb : register(b0);
 output_data VsImgui(input_data Input)
 {
     output_data Output;
-    Output.Position = mul(s_Cb.Matrix, float4(Input.Position, 0.0f, 1.0f));
+    Output.Position = mul(float4(Input.Position, 0.0f, 1.0f), s_Cb.Matrix);
     Output.Texcoord = Input.Texcoord;
     Output.Color = Input.Color;
     return Output;

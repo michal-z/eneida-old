@@ -149,6 +149,8 @@ BeginFrame(directx12& Dx)
     CmdAlloc->Reset();
     CmdList->Reset(CmdAlloc, nullptr);
 
+    Dx.CmdList->SetDescriptorHeaps(1, &Dx.ShaderVisibleHeaps[Dx.FrameIndex].Heap);
+
     CmdList->RSSetViewports(1, &CD3DX12_VIEWPORT(0.0f, 0.0f, (float)Dx.Resolution[0], (float)Dx.Resolution[1]));
     CmdList->RSSetScissorRects(1, &CD3DX12_RECT(0, 0, Dx.Resolution[0], Dx.Resolution[1]));
 
