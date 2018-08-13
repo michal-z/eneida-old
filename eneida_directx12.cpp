@@ -62,7 +62,8 @@ InitializeDirectX12(directx12& Dx)
     Dx.DescriptorSize = Dx.Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     Dx.DescriptorSizeRtv = Dx.Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-    /* Render Target Descriptor Heap */ {
+    // Render Target Descriptor Heap
+    {
         Dx.RenderTargetHeap.Size = 0;
         Dx.RenderTargetHeap.Capacity = 16;
         Dx.RenderTargetHeap.CpuStart.ptr = 0;
@@ -85,7 +86,8 @@ InitializeDirectX12(directx12& Dx)
             Handle.ptr += Dx.DescriptorSizeRtv;
         }
     }
-    /* Depth Stencil Descriptor Heap */ {
+    // Depth Stencil Descriptor Heap
+    {
         Dx.DepthStencilHeap.Size = 0;
         Dx.DepthStencilHeap.Capacity = 8;
         Dx.DepthStencilHeap.CpuStart.ptr = 0;
@@ -111,7 +113,8 @@ InitializeDirectX12(directx12& Dx)
         ViewDesc.Flags = D3D12_DSV_FLAG_NONE;
         Dx.Device->CreateDepthStencilView(Dx.DepthBuffer, &ViewDesc, Dx.DepthStencilHeap.CpuStart);
     }
-    /* Shader Visible Descriptor Heaps */ {
+    // Shader Visible Descriptor Heaps
+    {
         for (uint32_t Index = 0; Index < 2; ++Index)
         {
             Dx.ShaderVisibleHeaps[Index].Size = 0;
@@ -129,7 +132,8 @@ InitializeDirectX12(directx12& Dx)
             Dx.ShaderVisibleHeaps[Index].GpuStart = Dx.ShaderVisibleHeaps[Index].Heap->GetGPUDescriptorHandleForHeapStart();
         }
     }
-    /* Non-Shader Visible Descriptor Heap */ {
+    // Non-Shader Visible Descriptor Heap
+    {
         Dx.NonShaderVisibleHeap.Size = 0;
         Dx.NonShaderVisibleHeap.Capacity = 10000;
         Dx.NonShaderVisibleHeap.CpuStart.ptr = 0;
@@ -142,7 +146,8 @@ InitializeDirectX12(directx12& Dx)
         VHR(Dx.Device->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&Dx.NonShaderVisibleHeap.Heap)));
         Dx.NonShaderVisibleHeap.CpuStart = Dx.NonShaderVisibleHeap.Heap->GetCPUDescriptorHandleForHeapStart();
     }
-    /* Upload Memory Heaps */ {
+    // Upload Memory Heaps
+    {
         for (uint32_t Index = 0; Index < 2; ++Index)
         {
             gpu_memory_heap& UploadHeap = Dx.UploadMemoryHeaps[Index];

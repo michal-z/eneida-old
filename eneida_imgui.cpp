@@ -121,7 +121,8 @@ RenderGui(imgui_renderer& Gui, directx12& Dx)
         Frame.IndexBufferView.Format = sizeof(ImDrawIdx) == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
         Frame.IndexBufferView.SizeInBytes = DrawData->TotalIdxCount * sizeof(ImDrawIdx);
     }
-    /* update vertex and index buffers */ {
+    // update vertex and index buffers
+    {
         ImDrawVert* VertexPtr = (ImDrawVert*)Frame.VertexBufferCpuAddress;
         ImDrawIdx* IndexPtr = (ImDrawIdx*)Frame.IndexBufferCpuAddress;
 
