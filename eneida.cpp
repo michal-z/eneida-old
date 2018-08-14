@@ -3,7 +3,7 @@
 #include "eneida_common.cpp"
 #include "eneida_directx12.cpp"
 #include "eneida_imgui.cpp"
-#include "eneida_fractal_flames.cpp"
+#include "eneida_sketch_01.cpp"
 
 
 void *operator new[](size_t Size, const char* /*Name*/, int /*Flags*/,
@@ -217,7 +217,7 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     imgui_renderer GuiRenderer = {};
     InitializeGuiRenderer(GuiRenderer, Dx);
 
-    namespace DemoName = FractalFlames;
+    namespace DemoName = Sketch01;
     DemoName::demo Demo;
     DemoName::Initialize(Demo, Dx);
 
@@ -230,6 +230,9 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         SAFE_RELEASE(Resource);
 
     Dx.IntermediateResources.clear();
+
+    uint64_t Seed[2] = { 1278, 9092 };
+    uint64_t Rng = RngHash128(Seed);
 
     for (;;)
     {

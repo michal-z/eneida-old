@@ -1,4 +1,4 @@
-namespace FractalFlames
+namespace Sketch01
 {
 
 struct demo
