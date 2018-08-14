@@ -20,6 +20,9 @@
 #include "external/DirectXMath.h"
 #include "external/d3dx12.h"
 #include "external/stb_image.h"
+#include "external/stb_sprintf.h"
+#include "external/stb_perlin.h"
+#include "external/dr_mp3.h"
 #include "external/imgui.h"
 
 #pragma comment(lib, "d3d12.lib")
