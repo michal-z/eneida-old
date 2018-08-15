@@ -3,7 +3,7 @@
 #include "eneida_common.cpp"
 #include "eneida_directx12.cpp"
 #include "eneida_imgui.cpp"
-#include "eneida_sketch_01.cpp"
+#include "eneida_tests.cpp"
 
 
 void *operator new[](size_t Size, const char* /*Name*/, int /*Flags*/,
@@ -40,7 +40,7 @@ UpdateFrameStats(HWND Window, const char* Name, double& OutTime, float& OutDelta
         const double FramesPerSecond = FrameCount / (OutTime - HeaderRefreshTime);
         const double MilliSeconds = (1.0 / FramesPerSecond) * 1000.0;
         char Header[256];
-        snprintf(Header, sizeof(Header), "[%.1f fps  %.3f ms] %s", FramesPerSecond, MilliSeconds, Name);
+        stbsp_snprintf(Header, sizeof(Header), "[%.1f fps  %.3f ms] %s", FramesPerSecond, MilliSeconds, Name);
         SetWindowText(Window, Header);
         HeaderRefreshTime = OutTime;
         FrameCount = 0;
@@ -217,9 +217,9 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     imgui_renderer GuiRenderer = {};
     InitializeGuiRenderer(GuiRenderer, Dx);
 
-    namespace DemoName = Sketch01;
-    DemoName::demo Demo;
-    DemoName::Initialize(Demo, Dx);
+    namespace TestName = Test1;
+    TestName::test Test;
+    TestName::Initialize(Test, Dx);
 
     // Upload resources to the GPU.
     VHR(Dx.CmdList->Close());
@@ -257,7 +257,9 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
             BeginFrame(Dx);
             ImGui::NewFrame();
-            DemoName::Update(Demo, Dx, Time, DeltaTime);
+
+            TestName::Update(Test, Dx, Time, DeltaTime);
+
             ImGui::Render();
             RenderGui(GuiRenderer, Dx);
             EndFrame(Dx);
