@@ -20,8 +20,6 @@ struct output_data
     float4 Color : COLOR;
 };
 
-#endif // #if defined(VS_IMGUI) || defined(PS_IMGUI)
-
 #if defined(VS_IMGUI)
 
 struct constant_data
@@ -52,4 +50,5 @@ float4 PsImgui(output_data Input) : SV_Target0
 }
 
 #endif
+#endif // #if defined(VS_IMGUI) || defined(PS_IMGUI)
 // vim: set ts=4 sw=4 expandtab:
