@@ -1,26 +1,51 @@
 namespace Test1
 {
 
-struct test
+struct test1
 {
     int x;
 };
 
-static void
-Initialize(test& Test, directx12& Dx)
+static bool
+Initialize(test_dispatch_table& Dispatch, directx12& Dx)
 {
+    test1& Test = *(test1*)Dispatch.Data;
+    return true;
 }
 
 static void
-Shutdown(test& Test, directx12& Dx)
+Shutdown(test_dispatch_table& Dispatch, directx12& Dx)
 {
+    test1& Test = *(test1*)Dispatch.Data;
 }
 
 static void
-Update(test& Test, directx12& Dx, double FrameTime, float FrameDeltaTime)
+Update(test_dispatch_table& Dispatch, directx12& Dx, double Time, float DeltaTime)
 {
+    test1& Test = *(test1*)Dispatch.Data;
+
     ImGui::ShowDemoWindow();
 }
 
-} // namespace FractalFlames
+static test_dispatch_table
+GetDispatchTable()
+{
+    static test1 TestStorage = {};
+    test_dispatch_table DispatchTable = {};
+    DispatchTable.Data = &TestStorage;
+    DispatchTable.Initialize = Initialize;
+    DispatchTable.Shutdown = Shutdown;
+    DispatchTable.Update = Update;
+    return DispatchTable;
+}
+
+} // namespace Test1
+
+static eastl::vector<test_dispatch_table>
+GetAllTests()
+{
+    eastl::vector<test_dispatch_table> Tests;
+    Tests.push_back(Test1::GetDispatchTable());
+    return Tests;
+}
 // vim: set ts=4 sw=4 expandtab:

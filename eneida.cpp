@@ -217,9 +217,8 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     imgui_renderer GuiRenderer = {};
     InitializeGuiRenderer(GuiRenderer, Dx);
 
-    namespace TestName = Test1;
-    TestName::test Test;
-    TestName::Initialize(Test, Dx);
+    test_dispatch_table DispatchTable = Test1::GetDispatchTable();
+    DispatchTable.Initialize(DispatchTable, Dx);
 
     // Upload resources to the GPU.
     VHR(Dx.CmdList->Close());
@@ -258,7 +257,7 @@ WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             BeginFrame(Dx);
             ImGui::NewFrame();
 
-            TestName::Update(Test, Dx, Time, DeltaTime);
+            DispatchTable.Update(DispatchTable, Dx, Time, DeltaTime);
 
             ImGui::Render();
             RenderGui(GuiRenderer, Dx);
