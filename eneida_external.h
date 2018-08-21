@@ -17,6 +17,9 @@
 #include "external/EASTL/unordered_map.h"
 #include "external/EASTL/algorithm.h"
 
+#define __TBB_NO_IMPLICIT_LINKAGE 1
+#include "external/tbb/tbb.h"
+
 #include "external/DirectXMath.h"
 #include "external/d3dx12.h"
 #include "external/stb_image.h"
