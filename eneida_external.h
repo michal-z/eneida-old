@@ -14,16 +14,14 @@
 #define EASTL_RTTI_ENABLED 0
 #define EASTL_EXCEPTIONS_ENABLED 0
 #include "external/EASTL/vector.h"
-#include "external/EASTL/unordered_map.h"
+#include "external/EASTL/hash_map.h"
 #include "external/EASTL/algorithm.h"
-
-#define __TBB_NO_IMPLICIT_LINKAGE 1
-#include "external/tbb/tbb.h"
+#include "external/EASTL/sort.h"
+#include "external/EASTL/functional.h"
 
 #include "external/DirectXMath.h"
 #include "external/d3dx12.h"
 #include "external/stb_image.h"
-#include "external/stb_sprintf.h"
 #include "external/stb_perlin.h"
 #include "external/dr_mp3.h"
 #include "external/imgui.h"
