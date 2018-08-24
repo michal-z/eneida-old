@@ -5,25 +5,20 @@
 #include <stdint.h>
 #include <math.h>
 
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
+
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <dxgi1_4.h>
 #include <d3d12.h>
 #include <windows.h>
+#include <DirectXMath.h>
+#include <ppl.h>
 
-#define EASTL_RTTI_ENABLED 0
-#define EASTL_EXCEPTIONS_ENABLED 0
-#include "external/EASTL/vector.h"
-#include "external/EASTL/unordered_map.h"
-#include "external/EASTL/algorithm.h"
-
-#define __TBB_NO_IMPLICIT_LINKAGE 1
-#include "external/tbb/tbb.h"
-
-#include "external/DirectXMath.h"
 #include "external/d3dx12.h"
 #include "external/stb_image.h"
-#include "external/stb_sprintf.h"
 #include "external/stb_perlin.h"
 #include "external/dr_mp3.h"
 #include "external/imgui.h"

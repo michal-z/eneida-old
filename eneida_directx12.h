@@ -35,7 +35,7 @@ struct directx12
     unsigned BackBufferIndex;
     uint64_t FrameCount;
 
-    eastl::vector<ID3D12Resource*> IntermediateResources;
+    std::vector<ID3D12Resource*> IntermediateResources;
 
     descriptor_heap RenderTargetHeap;
     descriptor_heap DepthStencilHeap;

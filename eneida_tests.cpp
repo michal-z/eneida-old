@@ -41,10 +41,10 @@ GetDispatchTable()
 
 } // namespace Test1
 
-static eastl::vector<test_dispatch_table>
+static std::vector<test_dispatch_table>
 GetAllTests()
 {
-    eastl::vector<test_dispatch_table> Tests;
+    std::vector<test_dispatch_table> Tests;
     Tests.push_back(Test1::GetDispatchTable());
     return Tests;
 }

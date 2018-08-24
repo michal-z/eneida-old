@@ -47,11 +47,11 @@ InitializeGuiRenderer(imgui_renderer& Gui, directx12& Dx)
         { "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 
-    eastl::vector<uint8_t> CsoVs = LoadFile("data/shaders/imgui-vs.cso");
-    eastl::vector<uint8_t> CsoPs = LoadFile("data/shaders/imgui-ps.cso");
+    std::vector<uint8_t> CsoVs = LoadFile("data/shaders/imgui-vs.cso");
+    std::vector<uint8_t> CsoPs = LoadFile("data/shaders/imgui-ps.cso");
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC PsoDesc = {};
-    PsoDesc.InputLayout = { InputElements, (unsigned)eastl::size(InputElements) };
+    PsoDesc.InputLayout = { InputElements, (unsigned)std::size(InputElements) };
     PsoDesc.VS = { CsoVs.data(), CsoVs.size() };
     PsoDesc.PS = { CsoPs.data(), CsoPs.size() };
     PsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;

@@ -1,4 +1,4 @@
-static eastl::vector<uint8_t>
+static std::vector<uint8_t>
 LoadFile(const char* FileName)
 {
     FILE* File = fopen(FileName, "rb");
@@ -6,7 +6,7 @@ LoadFile(const char* FileName)
     fseek(File, 0, SEEK_END);
     long Size = ftell(File);
     assert(Size != -1);
-    eastl::vector<uint8_t> Content(Size);
+    std::vector<uint8_t> Content(Size);
     fseek(File, 0, SEEK_SET);
     fread(&Content[0], 1, Content.size(), File);
     fclose(File);
